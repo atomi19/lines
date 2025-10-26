@@ -1,0 +1,24 @@
+name: lines
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  drift: ^2.29.0
+  drift_flutter: ^0.2.7
+  path_provider: ^2.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  drift_dev: ^2.29.0
+  build_runner: ^2.9.0
+
+flutter:
+  uses-material-design: true
