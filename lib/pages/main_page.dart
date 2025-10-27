@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lines/logic/database.dart';
-import 'package:lines/widgets/build_icon_button.dart';
+import 'package:lines/widgets/build_button.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -44,6 +44,60 @@ class _MainPageState extends State<MainPage> {
   void _updateTextFields(String title, String content) {
     _titleController.text = title;
     _contentController.text = content;
+  }
+
+  // delete note confirm dialog
+  void _showAlertDialog() {
+    showDialog(
+      context: context, 
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text('Delete note?'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // cancel note deletion button
+              buildTextButton(
+                color: Colors.grey.shade100,
+                hoverColor: Colors.grey.shade200,
+                splashColor: Colors.grey.shade300, 
+                buttonText: 'Cancel',
+                buttonTextColor: Colors.black,
+                onTap: () => Navigator.pop(context)
+              ),
+              // delete note button
+              buildTextButton(
+                color: Colors.red.shade600,
+                hoverColor: Colors.red.shade500,
+                splashColor: Colors.red.shade400,
+                buttonText: 'Delete',
+                buttonTextColor: Colors.white, 
+                onTap: () async {
+                  Navigator.pop(context);
+                  if(_notes.isEmpty) return;
+
+                  final idToDelete = _currentSelectedNoteId;
+                  await db.deleteNote(idToDelete);
+
+                  setState(() {                    
+                    _notes.removeWhere((note) => note.id == idToDelete);
+                    if(_notes.isNotEmpty){
+                      _currentSelectedNoteId = _notes.last.id;
+                      _updateTextFields(_notes.last.title, _notes.last.content);
+                    } else {
+                      _currentSelectedNoteId = 0;
+                      _updateTextFields('', '');
+                    }
+                  });
+                }
+              )
+            ],
+          )
+        ],
+      )
+    );
   }
 
   @override
@@ -124,7 +178,7 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
             ),
-            // note 
+            // main content area
             Expanded(
               child: Column(
                 children: [
@@ -137,22 +191,7 @@ class _MainPageState extends State<MainPage> {
                         children: [
                           // delete note button
                           buildIconButton(
-                            onTap: () async {
-                              if(_notes.isEmpty) return;
-
-                              final idToDelete = _currentSelectedNoteId;
-                              await db.deleteNote(idToDelete);
-
-                              _notes.removeWhere((note) => note.id == idToDelete);
-                              if(_notes.isNotEmpty){
-                                _currentSelectedNoteId = _notes.last.id;
-                                _updateTextFields(_notes.last.title, _notes.last.content);
-                              } else {
-                                _currentSelectedNoteId = 0;
-                                _updateTextFields('', '');
-                              }
-                              setState(() {});
-                            }, 
+                            onTap: () => _showAlertDialog(),
                             icon: Icons.delete_outlined
                           ),
                           // create new note button
