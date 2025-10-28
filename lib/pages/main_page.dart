@@ -16,10 +16,12 @@ class _MainPageState extends State<MainPage> {
   int _currentSelectedNoteId = 0;
 
   // side panel variables
-  bool _isDraggingPanel = false;
   double _panelWidth = 200;
   final double _minPanelWidth = 150;
   final double _maxPanelWidth = 300;
+  static const double _closePanelWidth = 140;
+  bool _isSidebarOpen = true;
+  bool _isDraggingPanel = false;
 
   // text field controllers
   final TextEditingController _titleController = TextEditingController();
@@ -108,7 +110,8 @@ class _MainPageState extends State<MainPage> {
         child: Row(
           children: [
             // sidepanel with notes list
-            SizedBox(
+            _isSidebarOpen
+            ? SizedBox(
               width: _panelWidth,
               child: Container( 
                 decoration: BoxDecoration(
@@ -150,9 +153,11 @@ class _MainPageState extends State<MainPage> {
                   }
                 )
               )
-            ),
+            )
+            : SizedBox(),
             // draggable side panel
-            GestureDetector(
+            _isSidebarOpen 
+            ? GestureDetector(
               behavior: HitTestBehavior.translucent,
               onHorizontalDragStart: (_) {
                 setState(() {
@@ -162,6 +167,11 @@ class _MainPageState extends State<MainPage> {
               onHorizontalDragUpdate: (details) {
                 setState(() {
                   _panelWidth += details.delta.dx;
+                  // check if panel should be closed
+                  if(_panelWidth < _closePanelWidth) {
+                    _isSidebarOpen = false;
+                  }
+                  // max/min panel width 
                   _panelWidth = _panelWidth.clamp(_minPanelWidth, _maxPanelWidth);
                 });
               },
@@ -177,7 +187,8 @@ class _MainPageState extends State<MainPage> {
                   color: _isDraggingPanel ? Colors.grey.shade300 : Colors.grey.shade100,
                 ),
               ),
-            ),
+            )
+            : SizedBox(),
             // main content area
             Expanded(
               child: Column(
@@ -189,12 +200,26 @@ class _MainPageState extends State<MainPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // delete note button
-                          buildIconButton(
-                            onTap: () => _showAlertDialog(),
-                            icon: Icons.delete_outlined
+                          Row(
+                            spacing: 15,
+                            children: [
+                              // close sidebar button
+                              buildIconButton(
+                                onTap: () {
+                                  setState(() {
+                                    _isSidebarOpen = !_isSidebarOpen;
+                                  });
+                                }, 
+                                icon: _isSidebarOpen ? Icons.chevron_left : Icons.view_sidebar_outlined
+                              ),
+                              // delete note button
+                              buildIconButton(
+                                onTap: () => _showAlertDialog(),
+                                icon: Icons.delete_outlined
+                              ),
+                            ],
                           ),
-                          // create new note button
+                          // create new note button 
                           buildIconButton(
                             onTap: () async {
                               await db.addNote('', '');
