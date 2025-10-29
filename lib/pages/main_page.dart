@@ -140,42 +140,38 @@ class _MainPageState extends State<MainPage> {
             _isSidebarOpen
             ? SizedBox(
               width: _panelWidth,
-              child: Container( 
-                decoration: BoxDecoration(
-                  border: BoxBorder.fromLTRB(
-                    right: BorderSide(width: 1, color: Colors.grey.shade200)
-                  )
-                ),
+              child: Container(
+                padding: EdgeInsets.fromLTRB(5, 0, 5, 5),
                 child: ListView.builder(
                   itemCount: _notes.length,
                   itemBuilder: (BuildContext context, int index) {
                     return Container(
-                      decoration: BoxDecoration(
+                      margin: EdgeInsets.symmetric(vertical: 3),
+                      child: Material(
                         color: _currentSelectedNoteId == _notes[index].id
                         ? Colors.grey.shade300 // selected note color
                         : Colors.white, // not selected note color
-                        border: BoxBorder.fromLTRB(
-                          bottom: BorderSide(width: 1, color: Colors.grey.shade300)
-                        )
-                      ),
-                      child: ListTile(
-                        title: Text(_notes[index].title),
-                        subtitle: _notes[index].content.isNotEmpty 
-                        ? Text(
-                          _notes[index].content,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        )
-                        : null,
-                        onTap: ()  {
-                          _currentSelectedNoteId = _notes[index].id;
-                          _updateTextFields(
-                            _notes[index].title,
+                        borderRadius: BorderRadius.circular(10),
+                        clipBehavior: Clip.antiAlias,
+                        child: ListTile(
+                          title: Text(_notes[index].title),
+                          subtitle: _notes[index].content.isNotEmpty 
+                          ? Text(
                             _notes[index].content,
-                          );
-                          setState(() {});
-                        }
-                      )
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                          : null,
+                          onTap: ()  {
+                            _currentSelectedNoteId = _notes[index].id;
+                            _updateTextFields(
+                              _notes[index].title,
+                              _notes[index].content,
+                            );
+                            setState(() {});
+                          }
+                        ),
+                      ),
                     );
                   }
                 )
