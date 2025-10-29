@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lines/logic/database.dart';
 import 'package:lines/widgets/build_button.dart';
+import 'package:lines/logic/shared_preferences_helper.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -17,8 +18,8 @@ class _MainPageState extends State<MainPage> {
 
   // side panel variables
   double _panelWidth = 200;
-  final double _minPanelWidth = 150;
-  final double _maxPanelWidth = 300;
+  static const double _minPanelWidth = 150;
+  static const double _maxPanelWidth = 300;
   static const double _closePanelWidth = 140;
   bool _isSidebarOpen = true;
   bool _isDraggingPanel = false;
@@ -31,6 +32,8 @@ class _MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     _loadNotes(); // load notes on app start
+    _loadSiderbarState();
+    _loadPanelWidth();
   }
 
   // load notes from db
@@ -40,6 +43,30 @@ class _MainPageState extends State<MainPage> {
       _notes = notes;
       _currentSelectedNoteId = notes.last.id;
       _updateTextFields(_notes.last.title, _notes.last.content);
+    });
+  }
+
+  // load side panel width
+  Future<void> _loadPanelWidth() async {
+    final width = await getDouble(panelWidthKey);
+    setState(() {
+      // check if width is less then 150
+      // if so then set it to 150
+      // because if width is less then 150 and we will try to
+      // drag panel, it will close immediately
+      // otherwise just set it's width
+      if(width != null && width < 150.0) {
+        _panelWidth = 150.0;
+      } else {
+        _panelWidth = width ?? 150;
+      }
+    });
+  }
+  // load sidebar state (closed or not)
+  Future<void> _loadSiderbarState() async {
+    bool? value = await getBool(isSidebarOpenKey);
+    setState(() {
+      _isSidebarOpen = value ?? true;
     });
   }
 
@@ -170,7 +197,9 @@ class _MainPageState extends State<MainPage> {
                   // check if panel should be closed
                   if(_panelWidth < _closePanelWidth) {
                     _isSidebarOpen = false;
+                    saveBool(isSidebarOpenKey, false);
                   }
+                  saveDouble(panelWidthKey, _panelWidth);
                   // max/min panel width 
                   _panelWidth = _panelWidth.clamp(_minPanelWidth, _maxPanelWidth);
                 });
@@ -208,6 +237,10 @@ class _MainPageState extends State<MainPage> {
                                 onTap: () {
                                   setState(() {
                                     _isSidebarOpen = !_isSidebarOpen;
+                                    saveBool(isSidebarOpenKey, _isSidebarOpen);
+                                    if(_isSidebarOpen) {
+                                      _isDraggingPanel = false;
+                                    }
                                   });
                                 }, 
                                 icon: _isSidebarOpen ? Icons.chevron_left : Icons.view_sidebar_outlined
