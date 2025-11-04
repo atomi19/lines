@@ -13,8 +13,10 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   final db = AppDatabase();
   List<NotesItem> _notes =  [];
+  List<NotesItem> _foundNotes = [];
 
   int _currentSelectedNoteId = 0;
+  bool _isSearchingNotes = false;
 
   // side panel variables
   double _panelWidth = 200;
@@ -27,6 +29,7 @@ class _MainPageState extends State<MainPage> {
   // text field controllers
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -105,17 +108,27 @@ class _MainPageState extends State<MainPage> {
                 buttonTextColor: Colors.white, 
                 onTap: () async {
                   Navigator.pop(context);
-                  if(_notes.isEmpty) return;
 
                   final idToDelete = _currentSelectedNoteId;
                   await db.deleteNote(idToDelete);
 
-                  setState(() {                    
+                  setState(() {
                     _notes.removeWhere((note) => note.id == idToDelete);
-                    if(_notes.isNotEmpty){
-                      _currentSelectedNoteId = _notes.last.id;
-                      _updateTextFields(_notes.last.title, _notes.last.content);
+
+                    // remove from found notes
+                    if(_isSearchingNotes) {
+                      _foundNotes.removeWhere((note) => note.id == idToDelete);
+                    }
+
+                    final currentList = _isSearchingNotes ? _foundNotes : _notes;
+
+                    if(currentList.isNotEmpty) {
+                      // there is notes in the list
+                      final lastNote = currentList.last;
+                      _currentSelectedNoteId = lastNote.id;
+                      _updateTextFields(lastNote.title, lastNote.content);
                     } else {
+                      // there is no notes in the list
                       _currentSelectedNoteId = 0;
                       _updateTextFields('', '');
                     }
@@ -127,6 +140,107 @@ class _MainPageState extends State<MainPage> {
         ],
       )
     );
+  }
+
+  // more menu 
+  void _showMoreMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadiusGeometry.vertical(top: Radius.circular(10))
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          padding: EdgeInsets.fromLTRB(0, 10, 0, 0),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.create_outlined),
+                  title: const Text('Create Note'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await db.addNote('', '');
+                    await _loadNotes();
+                    _currentSelectedNoteId = _notes.last.id;
+                    _updateTextFields('', '');
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.delete_outlined, color: Colors.red.shade600,),
+                  title: Text('Delete Note', style: TextStyle(color: Colors.red.shade600),),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showAlertDialog();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    );
+  }
+
+  // build notes list 
+  Widget _buildNotes({
+    required List<NotesItem> notes
+  }) {
+    return ListView.builder(
+      itemCount: notes.length,
+      itemBuilder: (BuildContext context, int index) {
+        return Container(
+          margin: const EdgeInsets.symmetric(vertical: 3),
+          child: Material(
+            color: _currentSelectedNoteId == notes[index].id
+            //? Colors.grey.shade300 // selected note color
+            ? Colors.grey.shade300
+            : Colors.white, // not selected note color
+            borderRadius: BorderRadius.circular(10),
+            clipBehavior: Clip.antiAlias,
+            child: ListTile(
+              title: Text(notes[index].title),
+              subtitle: notes[index].content.isNotEmpty 
+              ? Text(
+                notes[index].content,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              )
+              : null,
+              onTap: ()  {
+                _currentSelectedNoteId = notes[index].id;
+                _updateTextFields(
+                  notes[index].title,
+                  notes[index].content,
+                );
+                setState(() {});
+              }
+            ), 
+          ),
+        );
+      }
+    );
+  }
+
+  void _handleNotesSearch(String query) {
+    if(query.trim().isEmpty) {
+      _isSearchingNotes = false;
+    } else {
+      _isSearchingNotes = true;
+    }
+    _searchNotes(query.toLowerCase());
+    setState(() {});
+  }
+
+  // search for notes by title and content
+  void _searchNotes(String query) {
+    if(query.trim().isNotEmpty) {
+      final foundNotes = _notes.where((note) => 
+        note.title.toString().toLowerCase().contains(query) || 
+        note.content.toString().toLowerCase().contains(query)
+      );
+      _foundNotes = foundNotes.toList();
+    }
   }
 
   @override
@@ -142,38 +256,54 @@ class _MainPageState extends State<MainPage> {
               width: _panelWidth,
               child: Container(
                 padding: EdgeInsets.fromLTRB(5, 0, 5, 5),
-                child: ListView.builder(
-                  itemCount: _notes.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    return Container(
-                      margin: EdgeInsets.symmetric(vertical: 3),
-                      child: Material(
-                        color: _currentSelectedNoteId == _notes[index].id
-                        ? Colors.grey.shade300 // selected note color
-                        : Colors.white, // not selected note color
+                child: Column(
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(0, 10, 0, 5),
+                      decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
-                        clipBehavior: Clip.antiAlias,
-                        child: ListTile(
-                          title: Text(_notes[index].title),
-                          subtitle: _notes[index].content.isNotEmpty 
-                          ? Text(
-                            _notes[index].content,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          )
-                          : null,
-                          onTap: ()  {
-                            _currentSelectedNoteId = _notes[index].id;
-                            _updateTextFields(
-                              _notes[index].title,
-                              _notes[index].content,
-                            );
-                            setState(() {});
-                          }
-                        ),
+                        color: Colors.grey.shade100,
                       ),
-                    );
-                  }
+                      child: TextField(
+                        controller: _searchController,
+                        cursorColor: Colors.black,
+                        cursorWidth: 1,
+                        decoration: InputDecoration(
+                          hintText: 'Search notes',
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                          prefixIcon: Icon(Icons.search_outlined),
+                          suffixIcon: _isSearchingNotes
+                          ? MouseRegion(                            
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              child: Icon(Icons.clear_rounded),
+                              onTap: () {
+                                setState(() {
+                                  _searchController.clear();
+                                  _isSearchingNotes = false;
+                                });
+                              },
+                            )
+                          )
+                          : null
+                        ),
+                        onChanged: (String query) => _handleNotesSearch(query)
+                      ),
+                    ),
+                    Expanded(
+                      child: _isSearchingNotes
+                      // found notes or text placeholder if there is no found notes
+                      ? _foundNotes.isEmpty
+                        ? Center(
+                          child: Text('No notes found', style: TextStyle(fontSize: 16, color: Colors.grey.shade600))
+                        )
+                        : _buildNotes(notes: _foundNotes)
+                      // all notes
+                      : _buildNotes(notes: _notes)
+                    )
+                  ],
                 )
               )
             )
@@ -225,38 +355,23 @@ class _MainPageState extends State<MainPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            spacing: 15,
-                            children: [
-                              // close sidebar button
-                              buildIconButton(
-                                onTap: () {
-                                  setState(() {
-                                    _isSidebarOpen = !_isSidebarOpen;
-                                    saveBool(isSidebarOpenKey, _isSidebarOpen);
-                                    if(_isSidebarOpen) {
-                                      _isDraggingPanel = false;
-                                    }
-                                  });
-                                }, 
-                                icon: _isSidebarOpen ? Icons.chevron_left : Icons.view_sidebar_outlined
-                              ),
-                              // delete note button
-                              buildIconButton(
-                                onTap: () => _showAlertDialog(),
-                                icon: Icons.delete_outlined
-                              ),
-                            ],
-                          ),
-                          // create new note button 
+                          // close/open sidebar button
                           buildIconButton(
-                            onTap: () async {
-                              await db.addNote('', '');
-                              await _loadNotes();
-                              _currentSelectedNoteId = _notes.last.id;
-                              _updateTextFields('', '');
+                            onTap: () {
+                              setState(() {
+                                _isSidebarOpen = !_isSidebarOpen;
+                                saveBool(isSidebarOpenKey, _isSidebarOpen);
+                                if(_isSidebarOpen) {
+                                  _isDraggingPanel = false;
+                                }
+                              });
                             }, 
-                            icon: Icons.create_outlined
+                            icon: _isSidebarOpen ? Icons.chevron_left : Icons.view_sidebar_outlined
+                          ),
+                          // more menu button
+                          buildIconButton(
+                            onTap: () => _showMoreMenu(),
+                            icon: Icons.more_horiz
                           )
                         ],
                       ),
